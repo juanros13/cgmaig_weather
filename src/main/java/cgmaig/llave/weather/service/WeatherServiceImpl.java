@@ -45,4 +45,13 @@ public class WeatherServiceImpl implements WeatherService {
     }
     return response;
   }
+
+
+  public String getWeatherJsonByGeo(String latitud, String longitud) {
+    String url = String.format(
+            "https://api.openweathermap.org/data/2.5/weather?lat=%s&lon=%s&units=metric&appid=%s",
+            latitud, longitud, apiKey
+    );
+    return restTemplate.getForObject(url, String.class);
+  }
 }

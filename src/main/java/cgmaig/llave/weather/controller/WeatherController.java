@@ -3,6 +3,7 @@ package cgmaig.llave.weather.controller;
 import cgmaig.llave.weather.dto.MunicipioConClimaDto;
 import cgmaig.llave.weather.dto.MunicipioDto;
 import cgmaig.llave.weather.dto.WeatherResponse;
+import cgmaig.llave.weather.service.MunicipioClimaService;
 import cgmaig.llave.weather.service.MunicipioService;
 import cgmaig.llave.weather.service.WeatherService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,6 +23,9 @@ public class WeatherController {
   WeatherService weatherService;
   @Autowired
   MunicipioService municipioService;
+
+  @Autowired
+  MunicipioClimaService municipioClimaService;
 
 
   public WeatherController(WeatherService weatherService) {
@@ -45,5 +49,20 @@ public class WeatherController {
               return new MunicipioConClimaDto(m.getId(), m.getNombre(), clima);
             })
             .collect(Collectors.toList());
+  }
+
+
+  @GetMapping("/actualizar-climas")
+  public List<MunicipioConClimaDto> actualizarClimas() {
+    List<MunicipioDto> municipios = municipioService.getAllMunicipios();
+
+    return municipios.stream()
+            .map(m -> {
+              String jsonClima = weatherService.getWeatherJsonByGeo(m.getLatitud(), m.getLongitud());
+              // Guarda o actualiza en la tabla
+              municipioClimaService.guardarClima(m.getId(), m.getNombre(), jsonClima);
+              return new MunicipioConClimaDto(m.getId(), m.getNombre(), jsonClima);
+            })
+            .toList();
   }
 }
