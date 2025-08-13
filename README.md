@@ -1,0 +1,1 @@
+# cgmaig_weather
