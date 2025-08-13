@@ -1,6 +1,14 @@
 package cgmaig.llave.weather.service;
 
+import cgmaig.llave.weather.dto.MunicipioConClimaDto;
+import cgmaig.llave.weather.dto.MunicipioDto;
 import cgmaig.llave.weather.dto.WeatherResponse;
+import cgmaig.llave.weather.enitty.MunicipioClima;
+import cgmaig.llave.weather.repository.MunicipioClimaRepository;
+import cgmaig.llave.weather.repository.MunicipioRepository;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -9,6 +17,18 @@ import org.springframework.web.server.ResponseStatusException;
 
 @Service
 public class WeatherServiceImpl implements WeatherService {
+
+  @Autowired
+  MunicipioRepository municipioRepository;
+
+  @Autowired
+  MunicipioService municipioService;
+
+  @Autowired
+  MunicipioClimaRepository municipioClimaRepository;
+
+  @Autowired
+  ObjectMapper objectMapper;
 
   @Value("${openweathermap.api.key}")
   private String apiKey;
@@ -53,5 +73,26 @@ public class WeatherServiceImpl implements WeatherService {
             latitud, longitud, apiKey
     );
     return restTemplate.getForObject(url, String.class);
+  }
+
+  public MunicipioConClimaDto obtenerMunicipioConClima(double lat, double lon) {
+    // 1. Buscar municipio
+    MunicipioDto municipio = municipioService.buscarMunicipioPorCoordenadas(lat, lon);
+
+    // 2. Buscar clima previamente guardado
+    String climaJsonString = municipioClimaRepository.findById(municipio.getId())
+            .map(MunicipioClima::getClimaJson)
+            .orElse("{}");
+
+    // 3. Convertir String a JsonNode
+    JsonNode climaJson;
+    try {
+      climaJson = objectMapper.readTree(climaJsonString);
+    } catch (Exception e) {
+      climaJson = objectMapper.createObjectNode(); // nodo vacío si hay error
+    }
+
+    // 3. Devolver DTO
+    return new MunicipioConClimaDto(municipio.getId(), municipio.getNombre(), climaJson);
   }
 }
