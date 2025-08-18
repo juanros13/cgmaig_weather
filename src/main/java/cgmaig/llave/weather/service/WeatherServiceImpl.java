@@ -6,8 +6,10 @@ import cgmaig.llave.weather.dto.WeatherResponse;
 import cgmaig.llave.weather.enitty.MunicipioClima;
 import cgmaig.llave.weather.repository.MunicipioClimaRepository;
 import cgmaig.llave.weather.repository.MunicipioRepository;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
@@ -68,11 +70,43 @@ public class WeatherServiceImpl implements WeatherService {
 
 
   public String getWeatherJsonByGeo(String latitud, String longitud) {
-    String url = String.format(
+
+    String urlWeather = String.format(
             "https://api.openweathermap.org/data/2.5/weather?lat=%s&lon=%s&units=metric&appid=%s",
             latitud, longitud, apiKey
     );
-    return restTemplate.getForObject(url, String.class);
+    String urlAir = String.format(
+            "https://api.openweathermap.org/data/2.5/air_pollution?lat=%s&lon=%s&appid=%s",
+            latitud, longitud, apiKey
+    );
+    String urlForecast = String.format(
+            "https://api.openweathermap.org/data/2.5/forecast?lat=%s&lon=%s&appid=%s",
+            latitud, longitud, apiKey
+    );
+
+    // Llamadas a las APIs
+    String weatherResponse = restTemplate.getForObject(urlWeather, String.class);
+    String airResponse = restTemplate.getForObject(urlAir, String.class);
+    String airForecast = restTemplate.getForObject(urlForecast, String.class);
+
+    try {
+      // Usamos Jackson para combinar los JSON
+      ObjectMapper mapper = new ObjectMapper();
+      ObjectNode root = (ObjectNode) mapper.readTree(weatherResponse);
+
+      // Agregar el JSON de air_pollution como un nodo dentro
+      JsonNode airNode = mapper.readTree(airResponse);
+      root.set("air_pollution", airNode);
+
+      // Agregar el JSON de air_pollution como un nodo dentro
+      JsonNode forecastNode = mapper.readTree(airForecast);
+      root.set("forecast", forecastNode);
+
+      return mapper.writeValueAsString(root);
+    } catch (JsonProcessingException e) {
+      // aquí decides qué hacer: loggear, lanzar RuntimeException, etc.
+      throw new RuntimeException("Error procesando JSON de OpenWeather", e);
+    }
   }
 
   public MunicipioConClimaDto obtenerMunicipioConClima(double lat, double lon) {
